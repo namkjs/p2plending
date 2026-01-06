@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Ví tiền - P2P Lending{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg shadow-md p-8 mb-6">
+        <h2 class="text-2xl font-bold mb-4"><i class="fas fa-wallet mr-2"></i>Ví của tôi</h2>
+        
+        <div class="text-center py-8 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg text-white mb-6">
+            <p class="text-lg opacity-80">Số dư hiện tại</p>
+            <p class="text-4xl font-bold" id="balance">{{ balance|floatformat:0 }} VNĐ</p>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+            <!-- Nạp tiền -->
+            <div x-data="{ open: false }">
+                <button @click="open = true" class="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600">
+                    <i class="fas fa-plus-circle mr-2"></i>Nạp tiền
+                </button>
+                
+                <div x-show="open" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg p-6 w-96" @click.away="open = false">
+                        <h3 class="text-xl font-bold mb-4">Nạp tiền</h3>
+                        <input type="number" id="deposit-amount" placeholder="Số tiền"
+                               class="w-full px-4 py-2 border rounded-lg mb-4">
+                        <div class="flex space-x-2">
+                            <button @click="open = false" class="flex-1 bg-gray-300 py-2 rounded">Hủy</button>
+                            <button onclick="deposit()" class="flex-1 bg-green-500 text-white py-2 rounded">Nạp</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Rút tiền -->
+            <div x-data="{ open: false }">
+                <button @click="open = true" class="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600">
+                    <i class="fas fa-minus-circle mr-2"></i>Rút tiền
+                </button>
+                
+                <div x-show="open" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg p-6 w-96" @click.away="open = false">
+                        <h3 class="text-xl font-bold mb-4">Rút tiền</h3>
+                        <input type="number" id="withdraw-amount" placeholder="Số tiền"
+                               class="w-full px-4 py-2 border rounded-lg mb-4">
+                        <div class="flex space-x-2">
+                            <button @click="open = false" class="flex-1 bg-gray-300 py-2 rounded">Hủy</button>
+                            <button onclick="withdraw()" class="flex-1 bg-orange-500 text-white py-2 rounded">Rút</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function deposit() {
+    const amount = document.getElementById('deposit-amount').value;
+    if (!amount || amount <= 0) return alert('Số tiền không hợp lệ!');
+    
+    fetch('{% url "user:deposit" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: 'amount=' + amount
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('balance').textContent = data.new_balance.toLocaleString() + ' VNĐ';
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    });
+}
+
+function withdraw() {
+    const amount = document.getElementById('withdraw-amount').value;
+    if (!amount || amount <= 0) return alert('Số tiền không hợp lệ!');
+    
+    fetch('{% url "user:withdraw" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: 'amount=' + amount
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('balance').textContent = data.new_balance.toLocaleString() + ' VNĐ';
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    });
+}
+</script>
+{% endblock %}

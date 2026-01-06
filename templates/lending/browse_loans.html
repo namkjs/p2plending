@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block title %}Tìm khoản đầu tư - P2P Lending{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold"><i class="fas fa-search-dollar mr-2"></i>Các khoản vay cần đầu tư</h2>
+    <a href="{% url 'lending:lender_profile' %}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+        <i class="fas fa-cog mr-2"></i>Cài đặt đầu tư
+    </a>
+</div>
+
+{% if matching_loans %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for item in matching_loans %}
+    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative">
+        <!-- Match Score Badge -->
+        {% if item.match_score is not None %}
+        <div class="absolute top-2 right-2">
+            <span class="px-2 py-1 rounded-full text-xs font-bold
+                {% if item.match_score >= 80 %}bg-green-500 text-white
+                {% elif item.match_score >= 60 %}bg-yellow-400 text-gray-800
+                {% elif item.match_score >= 40 %}bg-orange-400 text-white
+                {% else %}bg-gray-400 text-white{% endif %}">
+                {{ item.match_score|floatformat:0 }}% phù hợp
+            </span>
+        </div>
+        {% endif %}
+        
+        <div class="p-6">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <p class="text-2xl font-bold text-indigo-600">{{ item.loan.amount|floatformat:0 }} VNĐ</p>
+                    <p class="text-gray-500">{{ item.loan.borrower.username }}</p>
+                </div>
+                <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-sm">
+                    {{ item.loan.interest_rate }}%/năm
+                </span>
+            </div>
+            
+            <div class="space-y-2 mb-4">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Kỳ hạn:</span>
+                    <span class="font-medium">{{ item.loan.duration_months }} tháng</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">Mục đích:</span>
+                    <span class="font-medium truncate ml-2">{{ item.loan.purpose|truncatewords:5 }}</span>
+                </div>
+            </div>
+            
+            <!-- Match Reasons -->
+            {% if item.reasons %}
+            <div class="bg-blue-50 rounded p-2 mb-4">
+                <p class="text-xs text-blue-700">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    {{ item.reasons|join:", " }}
+                </p>
+            </div>
+            {% endif %}
+            
+            <div class="border-t pt-4">
+                <button onclick="invest({{ item.loan.id }})" 
+                        class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">
+                    <i class="fas fa-hand-holding-usd mr-2"></i>Đầu tư ngay
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center">
+    <i class="fas fa-search text-4xl text-gray-300 mb-4"></i>
+    <p class="text-gray-500">Chưa có khoản vay nào phù hợp với tiêu chí của bạn</p>
+    <p class="text-sm text-gray-400 mt-2">Hệ thống sẽ thông báo khi có khoản vay mới phù hợp</p>
+    <a href="{% url 'lending:lender_profile' %}" class="inline-block mt-4 text-indigo-600 hover:underline">
+        Điều chỉnh tiêu chí đầu tư →
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function invest(loanId) {
+    if (!confirm('Xác nhận đầu tư vào khoản vay này?')) return;
+    
+    fetch(`/lending/loan/${loanId}/invest/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.href = '/lending/investments/';
+        } else {
+            alert(data.error);
+        }
+    });
+}
+</script>
+{% endblock %}

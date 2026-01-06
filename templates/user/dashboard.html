@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - P2P Lending{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <!-- Balance Card -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500">Số dư ví</p>
+                <p class="text-2xl font-bold text-indigo-600">{{ profile.balance|floatformat:0 }} VNĐ</p>
+            </div>
+            <i class="fas fa-wallet text-4xl text-indigo-200"></i>
+        </div>
+        <a href="{% url 'user:wallet' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Quản lý ví →</a>
+    </div>
+    
+    <!-- KYC Status -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500">Trạng thái KYC</p>
+                <p class="text-xl font-semibold 
+                    {% if profile.kyc_status == 'VERIFIED' %}text-green-600
+                    {% elif profile.kyc_status == 'PENDING' %}text-yellow-600
+                    {% else %}text-red-600{% endif %}">
+                    {% if profile.kyc_status == 'VERIFIED' %}✓ Đã xác thực
+                    {% elif profile.kyc_status == 'PENDING' %}⏳ Đang chờ
+                    {% else %}✗ Chưa xác thực{% endif %}
+                </p>
+            </div>
+            <i class="fas fa-id-card text-4xl text-indigo-200"></i>
+        </div>
+        <a href="{% url 'user:kyc' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xác thực KYC →</a>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <p class="text-gray-500 mb-4">Thao tác nhanh</p>
+        <div class="space-y-2">
+            <a href="{% url 'lending:create_loan' %}" class="block w-full bg-green-500 text-white text-center py-2 rounded hover:bg-green-600">
+                <i class="fas fa-plus mr-2"></i>Tạo đơn vay
+            </a>
+            <a href="{% url 'lending:browse_loans' %}" class="block w-full bg-blue-500 text-white text-center py-2 rounded hover:bg-blue-600">
+                <i class="fas fa-search mr-2"></i>Tìm khoản đầu tư
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Recent Loans -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold mb-4"><i class="fas fa-file-invoice-dollar mr-2"></i>Đơn vay gần đây</h3>
+        {% if loan_requests %}
+        <div class="space-y-3">
+            {% for loan in loan_requests %}
+            <a href="{% url 'lending:loan_detail' loan.id %}" class="block p-3 border rounded hover:bg-gray-50">
+                <div class="flex justify-between">
+                    <span class="font-medium">{{ loan.amount|floatformat:0 }} VNĐ</span>
+                    <span class="text-sm px-2 py-1 rounded
+                        {% if loan.status == 'FUNDED' %}bg-green-100 text-green-700
+                        {% elif loan.status == 'APPROVED' %}bg-blue-100 text-blue-700
+                        {% elif loan.status == 'PENDING' %}bg-yellow-100 text-yellow-700
+                        {% else %}bg-red-100 text-red-700{% endif %}">
+                        {{ loan.get_status_display }}
+                    </span>
+                </div>
+                <p class="text-sm text-gray-500">{{ loan.interest_rate }}% - {{ loan.duration_months }} tháng</p>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500">Chưa có đơn vay nào</p>
+        {% endif %}
+        <a href="{% url 'lending:my_loans' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xem tất cả →</a>
+    </div>
+    
+    <!-- Notifications -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold mb-4"><i class="fas fa-bell mr-2"></i>Thông báo mới</h3>
+        {% if notifications %}
+        <div class="space-y-3">
+            {% for noti in notifications %}
+            <div class="p-3 border rounded bg-blue-50">
+                <p class="font-medium">{{ noti.title }}</p>
+                <p class="text-sm text-gray-600">{{ noti.message|truncatewords:15 }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ noti.created_at|timesince }} trước</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500">Không có thông báo mới</p>
+        {% endif %}
+        <a href="{% url 'user:notifications' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xem tất cả →</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,405 @@
+{% extends 'base.html' %}
+{% block title %}Xác thực KYC - P2P Lending{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto" x-data="kycForm()">
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <h2 class="text-2xl font-bold mb-2"><i class="fas fa-id-card mr-2"></i>Xác thực danh tính (KYC)</h2>
+        <p class="text-gray-600 mb-6">Điền thông tin cá nhân và upload CCCD để xác thực tài khoản</p>
+        
+        <!-- Status -->
+        <div class="mb-6 p-4 rounded-lg 
+            {% if profile.kyc_status == 'VERIFIED' %}bg-green-100
+            {% elif profile.kyc_status == 'PENDING' %}bg-yellow-100
+            {% elif profile.kyc_status == 'REJECTED' %}bg-red-100
+            {% else %}bg-gray-100{% endif %}">
+            <p class="font-semibold">
+                Trạng thái: 
+                {% if profile.kyc_status == 'VERIFIED' %}✓ Đã xác thực
+                {% elif profile.kyc_status == 'PENDING' %}⏳ Đang chờ AI duyệt
+                {% elif profile.kyc_status == 'REJECTED' %}✗ Bị từ chối
+                {% else %}Chưa xác thực{% endif %}
+            </p>
+            {% if profile.kyc_note %}
+            <p class="text-sm mt-1 text-red-600">Lý do: {{ profile.kyc_note }}</p>
+            {% endif %}
+            {% if profile.ocr_match_score %}
+            <p class="text-sm mt-1">Độ khớp thông tin: {{ profile.ocr_match_score|floatformat:1 }}%</p>
+            {% endif %}
+        </div>
+
+        <!-- Tabs -->
+        <div class="border-b mb-6">
+            <nav class="-mb-px flex space-x-8">
+                <button @click="activeTab = 'info'" 
+                        :class="activeTab === 'info' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        class="py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-user mr-2"></i>Thông tin cá nhân
+                </button>
+                <button @click="activeTab = 'docs'" 
+                        :class="activeTab === 'docs' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        class="py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-file-image mr-2"></i>Tài liệu CCCD
+                </button>
+                <button @click="activeTab = 'verify'" 
+                        :class="activeTab === 'verify' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        class="py-4 px-1 border-b-2 font-medium text-sm">
+                    <i class="fas fa-check-double mr-2"></i>Xác thực
+                </button>
+            </nav>
+        </div>
+
+        <!-- Tab 1: Thông tin cá nhân -->
+        <div x-show="activeTab === 'info'" x-cloak>
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Họ và tên -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Họ và tên <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="full_name" value="{{ profile.full_name }}" required
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Nhập đúng theo CCCD">
+                    </div>
+                    
+                    <!-- Số CCCD -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Số CCCD/CMND <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="id_card_number" value="{{ profile.id_card_number }}" required
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                               placeholder="12 số">
+                    </div>
+                    
+                    <!-- Ngày sinh -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Ngày sinh <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" name="date_of_birth" 
+                               value="{{ profile.date_of_birth|date:'Y-m-d' }}"
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <!-- Giới tính -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Giới tính <span class="text-red-500">*</span>
+                        </label>
+                        <select name="gender" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Chọn giới tính</option>
+                            <option value="Nam" {% if profile.gender == 'Nam' %}selected{% endif %}>Nam</option>
+                            <option value="Nữ" {% if profile.gender == 'Nữ' %}selected{% endif %}>Nữ</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Số điện thoại -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Số điện thoại <span class="text-red-500">*</span>
+                        </label>
+                        <input type="tel" name="phone_number" value="{{ profile.phone_number }}"
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                               placeholder="0xxx xxx xxx">
+                    </div>
+                    
+                    <!-- Quê quán -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Quê quán
+                        </label>
+                        <input type="text" name="hometown" value="{{ profile.hometown }}"
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Tỉnh/Thành phố">
+                    </div>
+                    
+                    <!-- Địa chỉ thường trú -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Địa chỉ thường trú <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" name="address" value="{{ profile.address }}"
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố">
+                    </div>
+                </div>
+                
+                <!-- Thông tin nghề nghiệp -->
+                <div class="border-t pt-6 mt-6">
+                    <h3 class="text-lg font-semibold mb-4"><i class="fas fa-briefcase mr-2"></i>Thông tin nghề nghiệp</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nghề nghiệp</label>
+                            <select name="occupation" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Chọn nghề nghiệp</option>
+                                <option value="Nhân viên văn phòng" {% if profile.occupation == 'Nhân viên văn phòng' %}selected{% endif %}>Nhân viên văn phòng</option>
+                                <option value="Công nhân" {% if profile.occupation == 'Công nhân' %}selected{% endif %}>Công nhân</option>
+                                <option value="Kinh doanh tự do" {% if profile.occupation == 'Kinh doanh tự do' %}selected{% endif %}>Kinh doanh tự do</option>
+                                <option value="Sinh viên" {% if profile.occupation == 'Sinh viên' %}selected{% endif %}>Sinh viên</option>
+                                <option value="Nội trợ" {% if profile.occupation == 'Nội trợ' %}selected{% endif %}>Nội trợ</option>
+                                <option value="Nghỉ hưu" {% if profile.occupation == 'Nghỉ hưu' %}selected{% endif %}>Nghỉ hưu</option>
+                                <option value="Khác" {% if profile.occupation == 'Khác' %}selected{% endif %}>Khác</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Công ty/Đơn vị</label>
+                            <input type="text" name="company_name" value="{{ profile.company_name }}"
+                                   class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                   placeholder="Tên công ty/đơn vị">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Thu nhập hàng tháng (VNĐ)</label>
+                            <input type="text" name="monthly_income" 
+                                   value="{{ profile.monthly_income|floatformat:0 }}"
+                                   class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                   placeholder="10,000,000">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700">
+                        <i class="fas fa-save mr-2"></i>Lưu thông tin
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tab 2: Upload CCCD -->
+        <div x-show="activeTab === 'docs'" x-cloak>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <p class="text-yellow-800 text-sm">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Hệ thống sẽ sử dụng AI để đọc thông tin từ CCCD và so sánh với thông tin bạn đã nhập.
+                    Vui lòng đảm bảo ảnh rõ nét và thông tin khớp với CCCD.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- CCCD Front -->
+                <div class="border-2 border-dashed rounded-lg p-6 text-center" id="front-upload">
+                    <i class="fas fa-id-card text-4xl text-gray-400 mb-4"></i>
+                    <p class="font-semibold mb-2">CCCD Mặt trước</p>
+                    <input type="file" id="id_front" accept="image/*" class="hidden" 
+                           @change="uploadDoc('ID_CARD_FRONT', $event.target)">
+                    <label for="id_front" class="cursor-pointer bg-indigo-100 text-indigo-600 px-4 py-2 rounded hover:bg-indigo-200 inline-block">
+                        <i class="fas fa-upload mr-1"></i> Chọn ảnh
+                    </label>
+                    <p class="text-sm text-gray-500 mt-2" id="front-status">
+                        {% for doc in kyc_docs %}{% if doc.doc_type == 'ID_CARD_FRONT' %}
+                        <span class="text-green-600">✓ Đã upload</span>
+                        {% if doc.ocr_status == 'COMPLETED' %}<br><span class="text-blue-600">✓ Đã OCR</span>{% endif %}
+                        {% endif %}{% endfor %}
+                    </p>
+                    <div id="front-preview" class="mt-4">
+                        {% for doc in kyc_docs %}{% if doc.doc_type == 'ID_CARD_FRONT' %}
+                        <img src="{{ doc.image.url }}" class="max-h-40 mx-auto rounded border">
+                        {% endif %}{% endfor %}
+                    </div>
+                </div>
+                
+                <!-- CCCD Back -->
+                <div class="border-2 border-dashed rounded-lg p-6 text-center" id="back-upload">
+                    <i class="fas fa-id-card text-4xl text-gray-400 mb-4"></i>
+                    <p class="font-semibold mb-2">CCCD Mặt sau</p>
+                    <input type="file" id="id_back" accept="image/*" class="hidden"
+                           @change="uploadDoc('ID_CARD_BACK', $event.target)">
+                    <label for="id_back" class="cursor-pointer bg-indigo-100 text-indigo-600 px-4 py-2 rounded hover:bg-indigo-200 inline-block">
+                        <i class="fas fa-upload mr-1"></i> Chọn ảnh
+                    </label>
+                    <p class="text-sm text-gray-500 mt-2" id="back-status">
+                        {% for doc in kyc_docs %}{% if doc.doc_type == 'ID_CARD_BACK' %}
+                        <span class="text-green-600">✓ Đã upload</span>
+                        {% if doc.ocr_status == 'COMPLETED' %}<br><span class="text-blue-600">✓ Đã OCR</span>{% endif %}
+                        {% endif %}{% endfor %}
+                    </p>
+                    <div id="back-preview" class="mt-4">
+                        {% for doc in kyc_docs %}{% if doc.doc_type == 'ID_CARD_BACK' %}
+                        <img src="{{ doc.image.url }}" class="max-h-40 mx-auto rounded border">
+                        {% endif %}{% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- OCR Result Preview -->
+            <div x-show="ocrData && Object.keys(ocrData).length > 0" class="mt-6 bg-blue-50 rounded-lg p-4">
+                <h4 class="font-semibold text-blue-800 mb-2"><i class="fas fa-robot mr-2"></i>Kết quả OCR từ AI:</h4>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <template x-for="(value, key) in ocrData" :key="key">
+                        <div class="flex">
+                            <span class="font-medium text-gray-600" x-text="getFieldLabel(key) + ':'"></span>
+                            <span class="ml-2" x-text="value"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Xác thực -->
+        <div x-show="activeTab === 'verify'" x-cloak>
+            <div class="text-center py-8">
+                <i class="fas fa-shield-alt text-6xl text-indigo-400 mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">Xác thực danh tính</h3>
+                <p class="text-gray-600 mb-6">
+                    Hệ thống AI sẽ so sánh thông tin bạn nhập với dữ liệu OCR từ CCCD để xác minh danh tính.
+                </p>
+                
+                <!-- Checklist -->
+                <div class="max-w-md mx-auto text-left mb-6">
+                    <div class="flex items-center p-3 bg-gray-50 rounded mb-2">
+                        <i class="fas fa-check-circle text-green-500 mr-3" x-show="hasPersonalInfo"></i>
+                        <i class="fas fa-times-circle text-gray-300 mr-3" x-show="!hasPersonalInfo"></i>
+                        <span>Đã điền thông tin cá nhân</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-gray-50 rounded mb-2">
+                        <i class="fas fa-check-circle text-green-500 mr-3" x-show="hasFrontDoc"></i>
+                        <i class="fas fa-times-circle text-gray-300 mr-3" x-show="!hasFrontDoc"></i>
+                        <span>Đã upload CCCD mặt trước</span>
+                    </div>
+                    <div class="flex items-center p-3 bg-gray-50 rounded">
+                        <i class="fas fa-check-circle text-green-500 mr-3" x-show="hasBackDoc"></i>
+                        <i class="fas fa-times-circle text-gray-300 mr-3" x-show="!hasBackDoc"></i>
+                        <span>Đã upload CCCD mặt sau</span>
+                    </div>
+                </div>
+                
+                <button @click="submitKYC()" :disabled="!canSubmit || isSubmitting"
+                        class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    <template x-if="!isSubmitting">
+                        <span><i class="fas fa-check-circle mr-2"></i>Gửi xác thực KYC</span>
+                    </template>
+                    <template x-if="isSubmitting">
+                        <span><i class="fas fa-spinner fa-spin mr-2"></i>Đang xử lý...</span>
+                    </template>
+                </button>
+                
+                <!-- Result -->
+                <div x-show="verifyResult" class="mt-6 p-4 rounded-lg" 
+                     :class="verifyResult?.success ? 'bg-green-100' : 'bg-red-100'">
+                    <p class="font-semibold" x-text="verifyResult?.message || verifyResult?.error"></p>
+                    <template x-if="verifyResult?.verification?.match_score">
+                        <p class="text-sm mt-2">
+                            Độ khớp thông tin: <span x-text="verifyResult.verification.match_score + '%'"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function kycForm() {
+    return {
+        activeTab: 'info',
+        ocrData: {},
+        isSubmitting: false,
+        verifyResult: null,
+        
+        // Check conditions
+        hasPersonalInfo: {{ profile.full_name|yesno:"true,false" }},
+        hasFrontDoc: {% for doc in kyc_docs %}{% if doc.doc_type == 'ID_CARD_FRONT' %}true{% endif %}{% empty %}false{% endfor %},
+        hasBackDoc: {% for doc in kyc_docs %}{% if doc.doc_type == 'ID_CARD_BACK' %}true{% endif %}{% empty %}false{% endfor %},
+        
+        get canSubmit() {
+            return this.hasPersonalInfo && this.hasFrontDoc && this.hasBackDoc;
+        },
+        
+        getFieldLabel(key) {
+            const labels = {
+                'id_number': 'Số CCCD',
+                'full_name': 'Họ tên',
+                'date_of_birth': 'Ngày sinh',
+                'gender': 'Giới tính',
+                'hometown': 'Quê quán',
+                'address': 'Địa chỉ',
+                'issue_date': 'Ngày cấp',
+                'issue_place': 'Nơi cấp'
+            };
+            return labels[key] || key;
+        },
+        
+        uploadDoc(docType, input) {
+            if (!input.files[0]) return;
+            
+            const formData = new FormData();
+            formData.append('doc_type', docType);
+            formData.append('image', input.files[0]);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            
+            const statusId = docType === 'ID_CARD_FRONT' ? 'front-status' : 'back-status';
+            const previewId = docType === 'ID_CARD_FRONT' ? 'front-preview' : 'back-preview';
+            
+            document.getElementById(statusId).innerHTML = '<span class="text-blue-600"><i class="fas fa-spinner fa-spin"></i> Đang upload & OCR...</span>';
+            
+            fetch('{% url "user:kyc_upload" %}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    let statusHtml = '<span class="text-green-600">✓ ' + data.message + '</span>';
+                    if (data.ocr_status === 'COMPLETED') {
+                        statusHtml += '<br><span class="text-blue-600">✓ Đã OCR thành công</span>';
+                        if (docType === 'ID_CARD_FRONT' && data.ocr_data) {
+                            this.ocrData = data.ocr_data;
+                        }
+                    } else if (data.ocr_status === 'FAILED') {
+                        statusHtml += '<br><span class="text-orange-600">⚠ OCR chưa thành công (server Vintern chưa chạy)</span>';
+                    }
+                    document.getElementById(statusId).innerHTML = statusHtml;
+                    
+                    // Preview image
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        document.getElementById(previewId).innerHTML = 
+                            '<img src="' + e.target.result + '" class="max-h-40 mx-auto rounded border mt-2">';
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                    
+                    // Update checklist
+                    if (docType === 'ID_CARD_FRONT') this.hasFrontDoc = true;
+                    if (docType === 'ID_CARD_BACK') this.hasBackDoc = true;
+                } else {
+                    alert(data.error);
+                    document.getElementById(statusId).innerHTML = '<span class="text-red-600">✗ ' + data.error + '</span>';
+                }
+            })
+            .catch(err => {
+                document.getElementById(statusId).innerHTML = '<span class="text-red-600">✗ Lỗi upload</span>';
+            });
+        },
+        
+        submitKYC() {
+            this.isSubmitting = true;
+            this.verifyResult = null;
+            
+            fetch('{% url "user:kyc_submit" %}', {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                this.isSubmitting = false;
+                this.verifyResult = data;
+                
+                if (data.success) {
+                    setTimeout(() => location.reload(), 2000);
+                }
+            })
+            .catch(err => {
+                this.isSubmitting = false;
+                this.verifyResult = { success: false, error: 'Lỗi kết nối' };
+            });
+        }
+    };
+}
+</script>
+{% endblock %}

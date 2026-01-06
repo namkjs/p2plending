@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Tranh chấp của tôi - P2P Lending{% endblock %}
+
+{% block content %}
+<h2 class="text-2xl font-bold mb-6"><i class="fas fa-exclamation-triangle mr-2"></i>Tranh chấp của tôi</h2>
+
+{% if disputes %}
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="w-full">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hợp đồng</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loại</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày tạo</th>
+                <th class="px-6 py-3"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for d in disputes %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4">#{{ d.id }}</td>
+                <td class="px-6 py-4">#{{ d.contract.id }}</td>
+                <td class="px-6 py-4">{{ d.get_dispute_type_display }}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded text-sm
+                        {% if d.status == 'RESOLVED' %}bg-green-100 text-green-700
+                        {% elif d.status == 'IN_REVIEW' %}bg-blue-100 text-blue-700
+                        {% elif d.status == 'ESCALATED' %}bg-red-100 text-red-700
+                        {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                        {{ d.get_status_display }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-gray-500">{{ d.created_at|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4">
+                    <a href="{% url 'lending:dispute_detail' d.id %}" class="text-indigo-600 hover:underline">
+                        Chi tiết →
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center">
+    <i class="fas fa-check-circle text-4xl text-green-400 mb-4"></i>
+    <p class="text-gray-500">Bạn chưa có tranh chấp nào</p>
+</div>
+{% endif %}
+{% endblock %}

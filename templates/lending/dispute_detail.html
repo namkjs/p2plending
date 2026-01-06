@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Tranh chấp #{{ dispute.id }} - P2P Lending{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div class="flex justify-between items-start mb-4">
+            <h2 class="text-2xl font-bold">Tranh chấp #{{ dispute.id }}</h2>
+            <span class="px-3 py-1 rounded-full text-sm
+                {% if dispute.status == 'RESOLVED' %}bg-green-100 text-green-700
+                {% elif dispute.status == 'IN_REVIEW' %}bg-blue-100 text-blue-700
+                {% elif dispute.status == 'ESCALATED' %}bg-red-100 text-red-700
+                {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                {{ dispute.get_status_display }}
+            </span>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <p class="text-gray-500 text-sm">Loại tranh chấp</p>
+                <p class="font-medium">{{ dispute.get_dispute_type_display }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 text-sm">Người tạo</p>
+                <p class="font-medium">{{ dispute.raised_by.username }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 text-sm">Ngày tạo</p>
+                <p class="font-medium">{{ dispute.created_at|date:"d/m/Y H:i" }}</p>
+            </div>
+            <div>
+                <p class="text-gray-500 text-sm">Hợp đồng</p>
+                <a href="{% url 'lending:loan_detail' dispute.contract.loan_request.id %}" class="text-indigo-600 hover:underline">
+                    #{{ dispute.contract.id }}
+                </a>
+            </div>
+        </div>
+        
+        <div class="border-t pt-4">
+            <p class="text-gray-500 text-sm mb-2">Mô tả:</p>
+            <p class="bg-gray-50 p-4 rounded">{{ dispute.description }}</p>
+        </div>
+    </div>
+    
+    {% if dispute.ai_analysis %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-xl font-bold mb-4"><i class="fas fa-robot mr-2"></i>Phân tích AI</h3>
+        <div class="bg-blue-50 p-4 rounded whitespace-pre-wrap text-sm">{{ dispute.ai_analysis }}</div>
+    </div>
+    {% endif %}
+    
+    {% if dispute.ai_recommendation %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-xl font-bold mb-4"><i class="fas fa-lightbulb mr-2"></i>Đề xuất giải pháp</h3>
+        <div class="bg-green-50 p-4 rounded whitespace-pre-wrap text-sm">{{ dispute.ai_recommendation }}</div>
+    </div>
+    {% endif %}
+    
+    {% if dispute.resolution_notes %}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-xl font-bold mb-4"><i class="fas fa-check-circle mr-2"></i>Kết quả giải quyết</h3>
+        <div class="bg-gray-50 p-4 rounded">{{ dispute.resolution_notes }}</div>
+        <p class="text-sm text-gray-500 mt-2">Giải quyết ngày: {{ dispute.resolved_at|date:"d/m/Y H:i" }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+.env
+fintech/
+venv/
+.venv/
+__pycache__/
+*.pyc
+db.sqlite3
+*.sqlite3
+.history/
+media/kyc_images/

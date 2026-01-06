@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Đầu tư của tôi - P2P Lending{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold"><i class="fas fa-chart-line mr-2"></i>Đầu tư của tôi</h2>
+    <a href="{% url 'lending:browse_loans' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+        <i class="fas fa-search mr-2"></i>Tìm khoản mới
+    </a>
+</div>
+
+{% if investments %}
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="w-full">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hợp đồng</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người vay</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Số tiền</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lãi suất</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày ký</th>
+                <th class="px-6 py-3"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for inv in investments %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4">#{{ inv.id }}</td>
+                <td class="px-6 py-4">{{ inv.loan_request.borrower.username }}</td>
+                <td class="px-6 py-4 font-medium">{{ inv.loan_request.amount|floatformat:0 }} VNĐ</td>
+                <td class="px-6 py-4">{{ inv.loan_request.interest_rate }}%</td>
+                <td class="px-6 py-4">
+                    {% if inv.is_disputed %}
+                    <span class="px-2 py-1 rounded text-sm bg-red-100 text-red-700">Tranh chấp</span>
+                    {% elif inv.is_active %}
+                    <span class="px-2 py-1 rounded text-sm bg-green-100 text-green-700">Đang hoạt động</span>
+                    {% else %}
+                    <span class="px-2 py-1 rounded text-sm bg-gray-100 text-gray-700">Hoàn thành</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-gray-500">{{ inv.signed_date|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4">
+                    <a href="{% url 'lending:loan_detail' inv.loan_request.id %}" class="text-indigo-600 hover:underline">
+                        Chi tiết →
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center">
+    <i class="fas fa-hand-holding-usd text-4xl text-gray-300 mb-4"></i>
+    <p class="text-gray-500 mb-4">Bạn chưa có khoản đầu tư nào</p>
+    <a href="{% url 'lending:browse_loans' %}" class="inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
+        Tìm khoản đầu tư
+    </a>
+</div>
+{% endif %}
+{% endblock %}

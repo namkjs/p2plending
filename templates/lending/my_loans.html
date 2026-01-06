@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Đơn vay của tôi - P2P Lending{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold"><i class="fas fa-file-invoice-dollar mr-2"></i>Đơn vay của tôi</h2>
+    <a href="{% url 'lending:create_loan' %}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+        <i class="fas fa-plus mr-2"></i>Tạo đơn mới
+    </a>
+</div>
+
+{% if loans %}
+<div class="bg-white rounded-lg shadow overflow-hidden">
+    <table class="w-full">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Số tiền</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lãi suất</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kỳ hạn</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trạng thái</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày tạo</th>
+                <th class="px-6 py-3"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for loan in loans %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4">#{{ loan.id }}</td>
+                <td class="px-6 py-4 font-medium">{{ loan.amount|floatformat:0 }} VNĐ</td>
+                <td class="px-6 py-4">{{ loan.interest_rate }}%</td>
+                <td class="px-6 py-4">{{ loan.duration_months }} tháng</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 rounded text-sm
+                        {% if loan.status == 'FUNDED' %}bg-green-100 text-green-700
+                        {% elif loan.status == 'APPROVED' %}bg-blue-100 text-blue-700
+                        {% elif loan.status == 'PENDING' %}bg-yellow-100 text-yellow-700
+                        {% else %}bg-red-100 text-red-700{% endif %}">
+                        {{ loan.get_status_display }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-gray-500">{{ loan.created_at|date:"d/m/Y" }}</td>
+                <td class="px-6 py-4">
+                    <a href="{% url 'lending:loan_detail' loan.id %}" class="text-indigo-600 hover:underline">
+                        Chi tiết →
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="bg-white rounded-lg shadow p-8 text-center">
+    <i class="fas fa-file-invoice text-4xl text-gray-300 mb-4"></i>
+    <p class="text-gray-500 mb-4">Bạn chưa có đơn vay nào</p>
+    <a href="{% url 'lending:create_loan' %}" class="inline-block bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
+        Tạo đơn vay đầu tiên
+    </a>
+</div>
+{% endif %}
+{% endblock %}
