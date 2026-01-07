@@ -31,22 +31,69 @@ class LoanRequest(models.Model):
 class LoanContract(models.Model):
     """Hợp đồng vay chính thức (Kết quả của Agent Contract Generator)"""
 
+    contract_number = models.CharField(
+        max_length=50, unique=True, null=True, blank=True
+    )
     loan_request = models.OneToOneField(LoanRequest, on_delete=models.CASCADE)
+    borrower = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="borrower_contracts",
+        null=True,
+        blank=True,
+    )
     lender = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="investments"
     )
 
-    # Nội dung hợp đồng do AI sinh ra
-    contract_text = models.TextField(verbose_name="Nội dung hợp đồng")
+    # Financial details
+    principal_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    interest_rate = models.FloatField(default=0)
+    total_interest = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    # Dates
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
     signed_date = models.DateTimeField(auto_now_add=True)
+
+    # Nội dung hợp đồng do AI sinh ra
+    contract_text = models.TextField(verbose_name="Nội dung hợp đồng", blank=True)
+    contract_content = models.TextField(verbose_name="Nội dung chi tiết", blank=True)
+
+    # Signatures
+    borrower_signed = models.BooleanField(default=False)
+    borrower_signed_at = models.DateTimeField(null=True, blank=True)
+    lender_signed = models.BooleanField(default=False)
+    lender_signed_at = models.DateTimeField(null=True, blank=True)
+
+    # Status
+    STATUS_CHOICES = [
+        ("PENDING_SIGNATURES", "Chờ ký"),
+        ("ACTIVE", "Đang hoạt động"),
+        ("COMPLETED", "Hoàn thành"),
+        ("DEFAULTED", "Vỡ nợ"),
+        ("CANCELLED", "Đã hủy"),
+    ]
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="PENDING_SIGNATURES"
+    )
 
     # Trạng thái thanh toán
     is_active = models.BooleanField(default=True)
     is_disputed = models.BooleanField(default=False)  # Có đang tranh chấp không?
 
+    def __str__(self):
+        return f"Contract #{self.contract_number or self.id}"
+
+    def save(self, *args, **kwargs):
+        if not self.borrower and self.loan_request:
+            self.borrower = self.loan_request.borrower
+        super().save(*args, **kwargs)
+
 
 class RepaymentSchedule(models.Model):
-    """Lịch trả nợ (Để Agent Payment Monitor theo dõi)"""
+    """Lịch trả nợ (Để Agent Payment Monitor theo dõi) - Legacy"""
 
     contract = models.ForeignKey(
         LoanContract, on_delete=models.CASCADE, related_name="schedules"
@@ -61,20 +108,143 @@ class RepaymentSchedule(models.Model):
         return f"Kỳ hạn {self.due_date} - {self.amount_due}"
 
 
+class PaymentSchedule(models.Model):
+    """Lịch thanh toán chi tiết"""
+
+    contract = models.ForeignKey(
+        LoanContract, on_delete=models.CASCADE, related_name="payment_schedules"
+    )
+    installment_number = models.IntegerField()
+    due_date = models.DateField()
+
+    # Amounts
+    principal_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    interest_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+
+    # Payment info
+    paid_amount = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True
+    )
+    paid_date = models.DateField(null=True, blank=True)
+
+    # Late fee
+    late_fee = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    late_days = models.IntegerField(default=0)
+
+    # Status
+    STATUS_CHOICES = [
+        ("PENDING", "Chờ thanh toán"),
+        ("PAID", "Đã thanh toán"),
+        ("OVERDUE", "Quá hạn"),
+        ("PARTIAL", "Thanh toán một phần"),
+    ]
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="PENDING")
+    note = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["contract", "installment_number"]
+        unique_together = ["contract", "installment_number"]
+
+    def __str__(self):
+        return f"Payment #{self.installment_number} - Contract #{self.contract_id}"
+
+
+class PaymentTransaction(models.Model):
+    """Giao dịch thanh toán"""
+
+    contract = models.ForeignKey(
+        LoanContract, on_delete=models.CASCADE, related_name="transactions"
+    )
+    payment_schedule = models.ForeignKey(
+        PaymentSchedule, on_delete=models.SET_NULL, null=True, blank=True
+    )
+
+    payer = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="payments_made"
+    )
+    recipient = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="payments_received"
+    )
+
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+
+    TRANSACTION_TYPE_CHOICES = [
+        ("DISBURSEMENT", "Giải ngân"),
+        ("INSTALLMENT", "Trả góp kỳ hạn"),
+        ("EARLY_PAYOFF", "Trả trước hạn"),
+        ("LATE_FEE", "Phí trễ hạn"),
+        ("REFUND", "Hoàn tiền"),
+    ]
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
+
+    PAYMENT_METHOD_CHOICES = [
+        ("WALLET", "Ví điện tử"),
+        ("BANK_TRANSFER", "Chuyển khoản"),
+        ("CARD", "Thẻ"),
+    ]
+    payment_method = models.CharField(
+        max_length=20, choices=PAYMENT_METHOD_CHOICES, default="WALLET"
+    )
+
+    STATUS_CHOICES = [
+        ("PENDING", "Đang xử lý"),
+        ("COMPLETED", "Hoàn thành"),
+        ("FAILED", "Thất bại"),
+        ("REFUNDED", "Đã hoàn"),
+    ]
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="PENDING")
+
+    late_fee = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    late_days = models.IntegerField(default=0)
+
+    transaction_ref = models.CharField(max_length=100, blank=True)
+    note = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Transaction #{self.id} - {self.amount}"
+
+
 class Dispute(models.Model):
     """Tranh chấp (Để Agent Dispute Resolver xử lý)"""
 
     contract = models.ForeignKey(
         LoanContract, on_delete=models.CASCADE, related_name="disputes"
     )
+    complainant = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="complaints_filed",
+        null=True,
+        blank=True,
+    )
+    respondent = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="complaints_received",
+        null=True,
+        blank=True,
+    )
+    # Legacy field
     raised_by = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="raised_disputes"
+        User,
+        on_delete=models.CASCADE,
+        related_name="raised_disputes",
+        null=True,
+        blank=True,
     )
 
     DISPUTE_TYPE_CHOICES = [
+        ("PAYMENT", "Vấn đề thanh toán"),
         ("LATE_PAYMENT", "Chậm thanh toán"),
         ("WRONG_AMOUNT", "Sai số tiền"),
+        ("CONTRACT_TERMS", "Điều khoản hợp đồng"),
         ("CONTRACT_VIOLATION", "Vi phạm hợp đồng"),
+        ("FRAUD", "Gian lận"),
         ("OTHER", "Khác"),
     ]
     dispute_type = models.CharField(max_length=30, choices=DISPUTE_TYPE_CHOICES)
@@ -84,9 +254,24 @@ class Dispute(models.Model):
         ("OPEN", "Đang mở"),
         ("IN_REVIEW", "Đang xem xét"),
         ("RESOLVED", "Đã giải quyết"),
+        ("CLOSED", "Đã đóng"),
         ("ESCALATED", "Đã chuyển lên cấp cao"),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="OPEN")
+
+    # Resolution
+    RESOLUTION_TYPE_CHOICES = [
+        ("FAVOR_COMPLAINANT", "Có lợi cho người khiếu nại"),
+        ("FAVOR_RESPONDENT", "Có lợi cho bên bị khiếu nại"),
+        ("COMPROMISE", "Thỏa thuận"),
+        ("DISMISSED", "Bác bỏ"),
+    ]
+    resolution_type = models.CharField(
+        max_length=20, choices=RESOLUTION_TYPE_CHOICES, null=True, blank=True
+    )
+    resolution = models.TextField(blank=True, null=True)
+    refund_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    penalty_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
     # AI resolution
     ai_analysis = models.TextField(blank=True, null=True)
@@ -94,10 +279,36 @@ class Dispute(models.Model):
     resolution_notes = models.TextField(blank=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Tranh chấp #{self.id} - {self.dispute_type}"
+
+
+class DisputeEvidence(models.Model):
+    """Bằng chứng cho tranh chấp"""
+
+    dispute = models.ForeignKey(
+        Dispute, on_delete=models.CASCADE, related_name="evidence"
+    )
+    submitted_by = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    EVIDENCE_TYPE_CHOICES = [
+        ("SCREENSHOT", "Ảnh chụp màn hình"),
+        ("DOCUMENT", "Tài liệu"),
+        ("CHAT_LOG", "Lịch sử chat"),
+        ("PAYMENT_PROOF", "Bằng chứng thanh toán"),
+        ("OTHER", "Khác"),
+    ]
+    evidence_type = models.CharField(max_length=20, choices=EVIDENCE_TYPE_CHOICES)
+    description = models.TextField()
+    file = models.FileField(upload_to="dispute_evidence/", null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Evidence #{self.id} for Dispute #{self.dispute_id}"
 
 
 class LenderProfile(models.Model):

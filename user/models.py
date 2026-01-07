@@ -89,13 +89,18 @@ class KYCDocument(models.Model):
 
     # Kết quả AI đọc được lưu vào đây để đối chiếu sau này (Audit log)
     ai_extracted_data = models.JSONField(null=True, blank=True)
+    ocr_data = models.JSONField(null=True, blank=True, verbose_name="Dữ liệu OCR")
     ocr_status = models.CharField(
         max_length=20,
         default="PENDING",
         choices=[
             ("PENDING", "Chờ xử lý"),
             ("PROCESSING", "Đang xử lý"),
+            ("COMPLETED", "Hoàn thành"),
             ("SUCCESS", "Thành công"),
             ("FAILED", "Thất bại"),
         ],
     )
+
+    def __str__(self):
+        return f"{self.user.username} - {self.doc_type}"

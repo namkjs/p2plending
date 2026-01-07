@@ -1,0 +1,469 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}P2P Lending - Nền tảng cho vay ngang hàng{% endblock %}
+
+{% block content %}
+<style>
+:root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --secondary: #0ea5e9;
+    --dark: #1e293b;
+    --light: #f8fafc;
+}
+
+/* Hero Section - Text overlay on image */
+.hero {
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.hero-bg-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.85) 0%, rgba(118, 75, 162, 0.85) 50%, rgba(240, 147, 251, 0.75) 100%);
+    z-index: 2;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 3;
+    width: 100%;
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    opacity: 0.95;
+    margin-bottom: 2.5rem;
+    max-width: 600px;
+    line-height: 1.8;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+
+.btn-hero {
+    padding: 16px 40px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    transition: all 0.3s ease;
+}
+
+.btn-hero-primary {
+    background: white;
+    color: var(--primary);
+    border: none;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.btn-hero-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    background: white;
+    color: var(--primary-dark);
+}
+
+.btn-hero-outline {
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 2px solid rgba(255,255,255,0.5);
+    backdrop-filter: blur(10px);
+}
+
+.btn-hero-outline:hover {
+    background: rgba(255,255,255,0.25);
+    border-color: white;
+    color: white;
+}
+
+/* Features Section */
+.features {
+    padding: 100px 0;
+    background: var(--light);
+}
+
+.section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 1rem;
+}
+
+.section-subtitle {
+    color: #64748b;
+    font-size: 1.1rem;
+    max-width: 600px;
+    margin: 0 auto 60px;
+}
+
+.feature-card {
+    background: white;
+    border-radius: 24px;
+    padding: 40px 30px;
+    text-align: center;
+    transition: all 0.4s ease;
+    border: 1px solid #e2e8f0;
+    height: 100%;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 25px 50px rgba(99, 102, 241, 0.15);
+    border-color: var(--primary);
+}
+
+.feature-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    font-size: 2rem;
+}
+
+.feature-icon.ai { background: linear-gradient(135deg, #667eea, #764ba2); }
+.feature-icon.secure { background: linear-gradient(135deg, #10b981, #059669); }
+.feature-icon.fast { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+.feature-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 15px;
+}
+
+.feature-desc {
+    color: #64748b;
+    line-height: 1.7;
+}
+
+/* How it works - Fixed connector */
+.how-it-works {
+    padding: 100px 0;
+    background: white;
+}
+
+.steps-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.step-card {
+    text-align: center;
+    padding: 20px;
+    flex: 1;
+    min-width: 200px;
+    max-width: 220px;
+    position: relative;
+}
+
+.step-number {
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 auto 20px;
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+    position: relative;
+    z-index: 2;
+}
+
+.step-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 10px;
+}
+
+.step-desc {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+/* Connector line between steps */
+.step-card:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 50px;
+    left: calc(50% + 40px);
+    width: calc(100% - 80px);
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    opacity: 0.3;
+    z-index: 1;
+}
+
+/* Stats */
+.stats {
+    padding: 80px 0;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+}
+
+.stat-item {
+    text-align: center;
+    padding: 20px;
+}
+
+.stat-number {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea, #f093fb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    color: #94a3b8;
+    font-size: 1rem;
+    margin-top: 5px;
+}
+
+/* CTA Section */
+.cta {
+    padding: 100px 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.cta-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.cta-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 2rem;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .hero-title { font-size: 2.8rem; }
+}
+
+@media (max-width: 768px) {
+    .hero-title { font-size: 2.2rem; }
+    .hero-subtitle { font-size: 1.1rem; }
+    .section-title { font-size: 2rem; }
+    .stat-number { font-size: 2.5rem; }
+    
+    .step-card:not(:last-child)::after {
+        display: none;
+    }
+    
+    .step-card {
+        min-width: 150px;
+    }
+}
+</style>
+
+<!-- Hero Section - Text overlay trên ảnh -->
+<section class="hero">
+    <!-- Background Image: 1920x1080px, ảnh về tài chính/công nghệ/bắt tay -->
+    <img src="{% static 'images/hero-bg.jpg' %}" alt="Background" class="hero-bg-image">
+    <div class="hero-overlay"></div>
+    
+    <div class="container hero-content">
+        <div class="row justify-content-center">
+            <div class="col-lg-10 text-center text-white">
+                <h1 class="hero-title">
+                    Kết nối tài chính thông minh với AI
+                </h1>
+                <p class="hero-subtitle mx-auto">
+                    Nền tảng cho vay ngang hàng an toàn, minh bạch với công nghệ AI tiên tiến. 
+                    Kết nối người vay và nhà đầu tư chỉ trong vài phút.
+                </p>
+                <div class="d-flex flex-wrap gap-3 justify-content-center">
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'user:dashboard' %}" class="btn btn-hero btn-hero-primary">
+                        <i class="fas fa-tachometer-alt me-2"></i>Vào Dashboard
+                    </a>
+                    <a href="{% url 'lending:browse_loans' %}" class="btn btn-hero btn-hero-outline">
+                        <i class="fas fa-search me-2"></i>Khám phá
+                    </a>
+                    {% else %}
+                    <a href="{% url 'user:register' %}" class="btn btn-hero btn-hero-primary">
+                        <i class="fas fa-rocket me-2"></i>Bắt đầu ngay
+                    </a>
+                    <a href="{% url 'user:login' %}" class="btn btn-hero btn-hero-outline">
+                        <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features">
+    <div class="container">
+        <div class="text-center">
+            <h2 class="section-title">Tại sao chọn chúng tôi?</h2>
+            <p class="section-subtitle">
+                Giải pháp tài chính hiện đại với công nghệ hàng đầu
+            </p>
+        </div>
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon ai text-white">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="feature-title">AI Thông minh</h3>
+                    <p class="feature-desc">
+                        Phân tích hồ sơ và ghép nối tự động với độ chính xác cao, 
+                        giảm thiểu rủi ro cho cả người vay và nhà đầu tư.
+                    </p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon secure text-white">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Bảo mật tối đa</h3>
+                    <p class="feature-desc">
+                        Xác thực KYC qua OCR, mã hóa dữ liệu đầu cuối và 
+                        hệ thống giám sát an ninh 24/7.
+                    </p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-icon fast text-white">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h3 class="feature-title">Nhanh chóng</h3>
+                    <p class="feature-desc">
+                        Đăng ký trong 5 phút, duyệt hồ sơ trong 24h và 
+                        giải ngân ngay khi được phê duyệt.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How it works -->
+<section class="how-it-works">
+    <div class="container">
+        <div class="text-center">
+            <h2 class="section-title">Quy trình đơn giản</h2>
+            <p class="section-subtitle">
+                Chỉ 4 bước để bắt đầu hành trình tài chính
+            </p>
+        </div>
+        <div class="steps-container">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h4 class="step-title">Đăng ký</h4>
+                <p class="step-desc">Tạo tài khoản và xác thực KYC</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <h4 class="step-title">Tạo yêu cầu</h4>
+                <p class="step-desc">Đăng khoản vay hoặc đầu tư</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <h4 class="step-title">AI ghép nối</h4>
+                <p class="step-desc">Hệ thống tự động kết nối</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">4</div>
+                <h4 class="step-title">Hoàn tất</h4>
+                <p class="step-desc">Giải ngân và thanh toán</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats -->
+<section class="stats">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">10K+</div>
+                    <div class="stat-label">Người dùng</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">5K+</div>
+                    <div class="stat-label">Khoản vay</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">500B</div>
+                    <div class="stat-label">Giá trị giao dịch</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="stat-item">
+                    <div class="stat-number">99%</div>
+                    <div class="stat-label">Tỉ lệ thành công</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+    <div class="container text-center text-white">
+        <h2 class="cta-title">Sẵn sàng bắt đầu?</h2>
+        <p class="cta-subtitle">Tham gia ngay hôm nay và trải nghiệm nền tảng cho vay thông minh</p>
+        {% if user.is_authenticated %}
+        <a href="{% url 'lending:create_loan' %}" class="btn btn-hero btn-hero-primary">
+            <i class="fas fa-plus-circle me-2"></i>Tạo khoản vay ngay
+        </a>
+        {% else %}
+        <a href="{% url 'user:register' %}" class="btn btn-hero btn-hero-primary">
+            <i class="fas fa-user-plus me-2"></i>Đăng ký miễn phí
+        </a>
+        {% endif %}
+    </div>
+</section>
+
+{% endblock %}

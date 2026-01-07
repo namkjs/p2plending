@@ -5,6 +5,7 @@ Views cho User app - Quản lý người dùng, KYC, Profile
 import json
 import os
 from datetime import datetime
+from decimal import Decimal
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, logout, authenticate
@@ -16,6 +17,11 @@ from django.views.decorators.http import require_http_methods
 from django.conf import settings
 
 from .models import UserProfile, KYCDocument
+
+
+def home_view(request):
+    """Trang chủ giới thiệu dự án"""
+    return render(request, "user/home.html")
 
 
 def register_view(request):
@@ -332,7 +338,7 @@ def wallet_view(request):
 def deposit(request):
     """Nạp tiền vào ví"""
     try:
-        amount = float(request.POST.get("amount", 0))
+        amount = Decimal(str(request.POST.get("amount", 0)))
         if amount <= 0:
             return JsonResponse({"success": False, "error": "Số tiền không hợp lệ!"})
 
@@ -355,12 +361,12 @@ def deposit(request):
 def withdraw(request):
     """Rút tiền từ ví"""
     try:
-        amount = float(request.POST.get("amount", 0))
+        amount = Decimal(str(request.POST.get("amount", 0)))
         profile = request.user.profile
 
         if amount <= 0:
             return JsonResponse({"success": False, "error": "Số tiền không hợp lệ!"})
-        if amount > float(profile.balance):
+        if amount > profile.balance:
             return JsonResponse({"success": False, "error": "Số dư không đủ!"})
 
         profile.balance -= amount
