@@ -28,19 +28,32 @@ def calculate_loan_schedule(
     interest_rate: float,
     duration_months: int,
     payment_method: str = "EQUAL_PRINCIPAL",
+    start_date: str = None,
 ) -> str:
     """
-    Tính lịch trả nợ chi tiết.
+    Tính lịch trả nợ chi tiết với ngày đến hạn.
 
     Args:
         principal: Số tiền vay
         interest_rate: Lãi suất %/năm
         duration_months: Thời hạn vay (tháng)
         payment_method: Phương thức trả (EQUAL_PRINCIPAL hoặc EQUAL_PAYMENT)
+        start_date: Ngày bắt đầu (YYYY-MM-DD), nếu None sẽ dùng ngày hiện tại
 
     Returns:
         JSON lịch trả nợ
     """
+    from datetime import datetime, timedelta
+
+    # Xác định ngày bắt đầu
+    if start_date:
+        try:
+            base_date = datetime.strptime(start_date, "%Y-%m-%d")
+        except:
+            base_date = datetime.now()
+    else:
+        base_date = datetime.now()
+
     monthly_rate = interest_rate / 100 / 12
     schedule = []
     remaining = principal
@@ -63,9 +76,13 @@ def calculate_loan_schedule(
             principal_payment = monthly_payment - interest
             remaining -= principal_payment
 
+            # Tính ngày đến hạn (cộng thêm số tháng)
+            due_date = base_date + timedelta(days=30 * month)
+
             schedule.append(
                 {
                     "month": month,
+                    "due_date": due_date.strftime("%Y-%m-%d"),
                     "principal_payment": round(principal_payment, 0),
                     "interest_payment": round(interest, 0),
                     "total_payment": round(monthly_payment, 0),
@@ -84,9 +101,13 @@ def calculate_loan_schedule(
             payment = principal_payment + interest
             remaining -= principal_payment
 
+            # Tính ngày đến hạn
+            due_date = base_date + timedelta(days=30 * month)
+
             schedule.append(
                 {
                     "month": month,
+                    "due_date": due_date.strftime("%Y-%m-%d"),
                     "principal_payment": round(principal_payment, 0),
                     "interest_payment": round(interest, 0),
                     "total_payment": round(payment, 0),
@@ -105,6 +126,7 @@ def calculate_loan_schedule(
                 "interest_rate": interest_rate,
                 "duration_months": duration_months,
                 "payment_method": payment_method,
+                "start_date": base_date.strftime("%Y-%m-%d"),
                 "total_interest": round(total_interest, 0),
                 "total_payment": round(total_payment, 0),
                 "schedule": schedule,

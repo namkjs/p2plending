@@ -1,141 +1,992 @@
 {% extends 'base.html' %}
+{% load humanize %}
 {% block title %}Chi tiết đơn vay #{{ loan.id }} - P2P Lending{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <!-- Loan Info -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div class="flex justify-between items-start mb-4">
-            <h2 class="text-2xl font-bold">Đơn vay #{{ loan.id }}</h2>
-            <span class="px-3 py-1 rounded-full text-sm
-                {% if loan.status == 'FUNDED' %}bg-green-100 text-green-700
-                {% elif loan.status == 'APPROVED' %}bg-blue-100 text-blue-700
-                {% elif loan.status == 'PENDING' %}bg-yellow-100 text-yellow-700
-                {% else %}bg-red-100 text-red-700{% endif %}">
-                {{ loan.get_status_display }}
-            </span>
-        </div>
-        
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            <div class="p-4 bg-gray-50 rounded">
-                <p class="text-gray-500 text-sm">Số tiền vay</p>
-                <p class="text-xl font-bold text-indigo-600">{{ loan.amount|floatformat:0 }} VNĐ</p>
-            </div>
-            <div class="p-4 bg-gray-50 rounded">
-                <p class="text-gray-500 text-sm">Lãi suất</p>
-                <p class="text-xl font-bold">{{ loan.interest_rate }}%/năm</p>
-            </div>
-            <div class="p-4 bg-gray-50 rounded">
-                <p class="text-gray-500 text-sm">Kỳ hạn</p>
-                <p class="text-xl font-bold">{{ loan.duration_months }} tháng</p>
-            </div>
-            <div class="p-4 bg-gray-50 rounded">
-                <p class="text-gray-500 text-sm">Ngày tạo</p>
-                <p class="text-xl font-bold">{{ loan.created_at|date:"d/m/Y" }}</p>
-            </div>
-        </div>
-        
-        <div class="border-t pt-4">
-            <p class="text-gray-500 text-sm">Mục đích vay:</p>
-            <p>{{ loan.purpose }}</p>
-        </div>
-    </div>
-    
-    {% if contract %}
-    <!-- Contract Info -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 class="text-xl font-bold mb-4"><i class="fas fa-file-contract mr-2"></i>Hợp đồng</h3>
-        
-        <div class="grid grid-cols-2 gap-4 mb-4">
-            <div>
-                <p class="text-gray-500 text-sm">Người cho vay</p>
-                <p class="font-medium">{{ contract.lender.username }}</p>
-            </div>
-            <div>
-                <p class="text-gray-500 text-sm">Ngày ký</p>
-                <p class="font-medium">{{ contract.signed_date|date:"d/m/Y H:i" }}</p>
-            </div>
-        </div>
-        
-        <details class="border rounded p-4">
-            <summary class="cursor-pointer font-medium">Xem nội dung hợp đồng</summary>
-            <div class="mt-4 whitespace-pre-wrap text-sm">{{ contract.contract_text }}</div>
-        </details>
-        
-        {% if not contract.is_disputed %}
-        <a href="{% url 'lending:create_dispute' contract.id %}" class="mt-4 inline-block text-red-600 hover:underline">
-            <i class="fas fa-exclamation-triangle mr-1"></i>Tạo tranh chấp
+<div class="container my-4">
+    <!-- Back Button -->
+    <div class="mb-4 pb-2">
+        <a href="{% url 'user:dashboard' %}" class="btn btn-light border">
+            <i class="fas fa-arrow-left me-2"></i>Quay lại Dashboard
         </a>
-        {% endif %}
     </div>
-    
-    <!-- Repayment Schedule -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <h3 class="text-xl font-bold mb-4"><i class="fas fa-calendar-alt mr-2"></i>Lịch trả nợ</h3>
-        
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-4 py-2 text-left">Kỳ</th>
-                        <th class="px-4 py-2 text-left">Ngày đến hạn</th>
-                        <th class="px-4 py-2 text-right">Số tiền</th>
-                        <th class="px-4 py-2 text-center">Trạng thái</th>
-                        {% if is_borrower %}
-                        <th class="px-4 py-2"></th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody class="divide-y">
-                    {% for schedule in schedules %}
-                    <tr>
-                        <td class="px-4 py-3">{{ forloop.counter }}</td>
-                        <td class="px-4 py-3">{{ schedule.due_date|date:"d/m/Y" }}</td>
-                        <td class="px-4 py-3 text-right font-medium">{{ schedule.amount_due|floatformat:0 }} VNĐ</td>
-                        <td class="px-4 py-3 text-center">
-                            {% if schedule.is_paid %}
-                            <span class="text-green-600"><i class="fas fa-check-circle"></i> Đã thanh toán</span>
-                            {% else %}
-                            <span class="text-yellow-600"><i class="fas fa-clock"></i> Chờ thanh toán</span>
+
+    <!-- Header with Gradient -->
+    <div class="gradient-header mb-5">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="text-white mb-3">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>Đơn vay #{{ loan.id }}
+                </h2>
+                <p class="text-white-50 mb-0 d-flex align-items-center">
+                    <i class="far fa-clock me-2"></i>Ngày tạo: {{ loan.created_at|date:"d/m/Y H:i" }}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <span class="status-badge status-{{ loan.status|lower }}">
+                    {{ loan.get_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============= THÔNG TIN ĐƠN VAY ============= -->
+    <div class="card modern-card shadow-sm mb-5">
+        <div class="card-body p-4 pt-4">
+            <!-- Stats Cards Row -->
+            <div class="row g-3 mb-4">
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card stat-primary">
+                        <div class="stat-icon">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Số tiền vay</div>
+                            <div class="stat-value">{{ loan.amount|floatformat:0|intcomma }} ₫</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card stat-success">
+                        <div class="stat-icon">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Lãi suất</div>
+                            <div class="stat-value">{{ loan.interest_rate }}%<small class="ms-1">/năm</small></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card stat-info">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Kỳ hạn</div>
+                            <div class="stat-value">{{ loan.duration_months }} tháng</div>
+                        </div>
+                    </div>
+                </div>
+                {% if loan_schedule %}
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card stat-warning">
+                        <div class="stat-icon">
+                            <i class="fas fa-calculator"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-label">Trả/tháng</div>
+                            <div class="stat-value">{{ loan_schedule.0.total_payment|floatformat:0|intcomma }} ₫</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Purpose & Contract Row -->
+            <div class="row g-4">
+                <!-- Mục đích vay -->
+                <div class="col-md-6">
+                    <div class="purpose-box h-100">
+                        <div class="purpose-header">
+                            <i class="fas fa-clipboard-list me-2"></i>Mục đích vay
+                        </div>
+                        <div class="purpose-content">{{ loan.purpose }}</div>
+                    </div>
+                </div>
+
+                <!-- Hợp đồng -->
+                <div class="col-md-6">
+                    {% if contract %}
+                    <div class="contract-info p-3 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <strong class="text-success fs-5"><i class="fas fa-file-contract me-2"></i>Hợp đồng</strong>
+                            {% if not contract.is_disputed %}
+                            <a href="{% url 'lending:create_dispute' contract.id %}" class="btn btn-outline-danger btn-sm">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Tranh chấp
+                            </a>
                             {% endif %}
-                        </td>
-                        {% if is_borrower %}
-                        <td class="px-4 py-3">
-                            {% if not schedule.is_paid %}
-                            <button onclick="makePayment({{ schedule.id }})" 
-                                    class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">
-                                Thanh toán
-                            </button>
+                        </div>
+                        <div class="contract-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Người cho vay:</span>
+                                <span class="detail-value">{{ contract.lender.username }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Ngày ký:</span>
+                                <span class="detail-value">{{ contract.signed_date|date:"d/m/Y H:i" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Mã HĐ:</span>
+                                <span class="detail-value">{{ contract.contract_number }}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary mt-3 w-100" type="button" data-bs-toggle="collapse" data-bs-target="#contractContent">
+                            <i class="fas fa-eye me-1"></i>Xem chi tiết hợp đồng
+                        </button>
+                        <div class="collapse mt-3" id="contractContent">
+                            <pre class="contract-text">{{ contract.contract_text }}</pre>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>Chưa có hợp đồng
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============= LỊCH TRẢ NỢ ============= -->
+    {% if payment_schedules or loan_schedule %}
+    <div class="card modern-card shadow-sm">
+        <div class="schedule-header">
+            <div class="d-flex align-items-center">
+                <div class="schedule-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0 text-white">Lịch trả nợ</h5>
+                    <small class="text-white-50">Chi tiết các kỳ thanh toán</small>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            {% if loan_schedule %}
+            <!-- Lịch dự kiến từ AI -->
+            <div class="alert alert-info d-flex align-items-center mb-4">
+                <i class="fas fa-robot fa-2x me-3"></i>
+                <div>
+                    <strong class="d-block mb-1">Lịch trả nợ dự kiến</strong>
+                    <small>Được tính toán bởi AI Agent</small>
+                </div>
+            </div>
+
+            <!-- Thống kê tổng quan -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="summary-box summary-primary">
+                        <div class="summary-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div>
+                            <div class="summary-label">Tổng phải trả</div>
+                            <div class="summary-value">{{ total_amount|floatformat:0|intcomma }} ₫</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="summary-box summary-danger">
+                        <div class="summary-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div>
+                            <div class="summary-label">Tổng tiền lãi</div>
+                            <div class="summary-value">{{ total_interest|floatformat:0|intcomma }} ₫</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="summary-box summary-info">
+                        <div class="summary-icon">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div>
+                            <div class="summary-label">Số kỳ thanh toán</div>
+                            <div class="summary-value">{{ loan.duration_months }} kỳ</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lịch trả nợ dạng Timeline -->
+            <div class="schedule-timeline">
+                {% for item in loan_schedule %}
+                <div class="timeline-item">
+                    <div class="timeline-period">
+                        <span class="period-number">Kỳ {{ item.month }}</span>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-date">
+                            <i class="far fa-calendar-alt me-2"></i>{{ item.due_date }}
+                        </div>
+                        <div class="timeline-details">
+                            <div class="detail-item">
+                                <span class="detail-label">Tiền gốc</span>
+                                <span class="detail-value">{{ item.principal_payment|floatformat:0|intcomma }} ₫</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Tiền lãi</span>
+                                <span class="detail-value text-danger">{{ item.interest_payment|floatformat:0|intcomma }} ₫</span>
+                            </div>
+                            <div class="detail-item detail-total">
+                                <span class="detail-label">Tổng trả</span>
+                                <span class="detail-value text-primary fw-bold">{{ item.total_payment|floatformat:0|intcomma }} ₫</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Dư nợ</span>
+                                <span class="detail-value text-muted">{{ item.remaining_balance|floatformat:0|intcomma }} ₫</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if payment_schedules %}
+            <!-- Lịch chính thức -->
+            {% if loan_schedule %}
+            <div class="section-divider"></div>
+            {% endif %}
+            
+            <div class="alert alert-success d-flex align-items-center mb-4">
+                <i class="fas fa-check-circle fa-2x me-3"></i>
+                <div>
+                    <strong class="d-block mb-1">Lịch trả nợ chính thức</strong>
+                    <small>Đã được xác nhận và lưu vào hệ thống</small>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="modern-table modern-table-official">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 80px;">Kỳ</th>
+                            <th style="min-width: 140px;">Ngày đến hạn</th>
+                            <th class="text-end" style="min-width: 150px;">Tiền gốc</th>
+                            <th class="text-end" style="min-width: 150px;">Tiền lãi</th>
+                            <th class="text-end" style="min-width: 160px;">Tổng tiền</th>
+                            <th class="text-center" style="min-width: 180px;">Trạng thái</th>
+                            {% if is_borrower %}
+                            <th class="text-center" style="width: 140px;">Thao tác</th>
                             {% endif %}
-                        </td>
-                        {% endif %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for schedule in payment_schedules %}
+                        <tr class="{% if schedule.status == 'PAID' %}row-paid{% elif schedule.status == 'OVERDUE' %}row-overdue{% endif %}">
+                            <td class="text-center">
+                                <span class="period-badge {% if schedule.status == 'PAID' %}badge-success{% endif %}">{{ schedule.installment_number }}</span>
+                            </td>
+                            <td>
+                                <i class="far fa-calendar me-2 {% if schedule.status == 'OVERDUE' %}text-danger{% else %}text-primary{% endif %}"></i>
+                                <span class="fw-medium">{{ schedule.due_date|date:"d/m/Y" }}</span>
+                            </td>
+                            <td class="text-end">
+                                <span class="amount-text">{{ schedule.principal_amount|floatformat:0|intcomma }}</span>
+                                <small class="text-muted ms-1">₫</small>
+                            </td>
+                            <td class="text-end">
+                                <span class="amount-text text-danger">{{ schedule.interest_amount|floatformat:0|intcomma }}</span>
+                                <small class="text-muted ms-1">₫</small>
+                            </td>
+                            <td class="text-end">
+                                <div>
+                                    <span class="amount-text fw-bold text-primary">{{ schedule.total_amount|floatformat:0|intcomma }}</span>
+                                    <small class="text-muted ms-1">₫</small>
+                                </div>
+                                {% if schedule.late_fee > 0 %}
+                                <div class="small text-danger mt-1">+ Phạt: {{ schedule.late_fee|floatformat:0|intcomma }} ₫</div>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if schedule.status == 'PAID' %}
+                                <div class="status-badge-lg status-paid">
+                                    <i class="fas fa-check-circle"></i> Đã thanh toán
+                                </div>
+                                <div class="small text-muted mt-1">{{ schedule.paid_date|date:"d/m/Y" }}</div>
+                                {% elif schedule.status == 'OVERDUE' %}
+                                <div class="status-badge-lg status-overdue">
+                                    <i class="fas fa-exclamation-triangle"></i> Quá hạn
+                                </div>
+                                <div class="small text-danger mt-1 fw-medium">{{ schedule.late_days }} ngày</div>
+                                {% else %}
+                                <div class="status-badge-lg status-pending">
+                                    <i class="fas fa-clock"></i> Chờ thanh toán
+                                </div>
+                                {% endif %}
+                            </td>
+                            {% if is_borrower %}
+                            <td class="text-center">
+                                {% if schedule.status != 'PAID' %}
+                                {% with total_pay=schedule.total_amount|add:schedule.late_fee %}
+                                <button onclick="makePayment({{ schedule.id }}, {{ total_pay }})" 
+                                        class="btn btn-pay">
+                                    <i class="fas fa-credit-card"></i> Trả
+                                </button>
+                                {% endwith %}
+                                {% else %}
+                                <i class="fas fa-check-double text-success" style="font-size: 1.75rem;"></i>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}
 </div>
+
+<style>
+/* ========== GRADIENT HEADER ========== */
+.gradient-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 2.5rem;
+    border-radius: 1.25rem;
+    box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+    margin-bottom: 2rem;
+}
+
+.gradient-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.status-badge {
+    padding: 0.875rem 2rem;
+    border-radius: 3rem;
+    font-weight: 600;
+    font-size: 1rem;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    white-space: nowrap;
+}
+
+.status-funded { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+.status-approved { background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; }
+.status-pending { background: linear-gradient(135deg, #fa709a, #fee140); color: #2d3748; }
+.status-rejected { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; }
+
+/* ========== MODERN CARD ========== */
+.modern-card {
+    border: none;
+    border-radius: 1.25rem;
+    overflow: hidden;
+}
+
+/* ========== STAT CARDS ========== */
+.stat-card {
+    padding: 1.75rem;
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.stat-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+}
+
+.stat-card:hover::before {
+    opacity: 1;
+}
+
+.stat-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.stat-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+.stat-info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.stat-warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    backdrop-filter: blur(10px);
+}
+
+.stat-icon i {
+    font-size: 1.75rem;
+    color: white;
+}
+
+.stat-content {
+    color: white;
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+/* ========== PURPOSE BOX ========== */
+.purpose-box {
+    background: #f8f9fa;
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 1px solid #dee2e6;
+    transition: all 0.3s;
+}
+
+.purpose-box:hover {
+    border-color: #adb5bd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.purpose-header {
+    background: #e9ecef;
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.95rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.purpose-content {
+    padding: 1.5rem;
+    color: #212529;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    min-height: 100px;
+    font-weight: 400;
+}
+
+/* ========== CONTRACT INFO ========== */
+.contract-info {
+    border-radius: 1.25rem;
+    border: 2px solid #11998e;
+    background: linear-gradient(135deg, #f0fffb 0%, #e6fff8 100%);
+    transition: all 0.3s;
+}
+
+.contract-info:hover {
+    border-color: #38ef7d;
+    box-shadow: 0 5px 20px rgba(17, 153, 142, 0.15);
+}
+
+.contract-details {
+    margin-bottom: 1rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(17, 153, 142, 0.1);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.detail-value {
+    color: #2d3748;
+    font-weight: 600;
+}
+
+.contract-text {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 0.875rem;
+    color: #4a5568;
+    line-height: 1.6;
+}
+
+/* ========== SCHEDULE HEADER ========== */
+.schedule-header {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    padding: 2.5rem;
+}
+
+.schedule-icon {
+    width: 70px;
+    height: 70px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1.25rem;
+    backdrop-filter: blur(10px);
+}
+
+.schedule-icon i {
+    font-size: 2rem;
+    color: white;
+}
+
+/* ========== SCHEDULE TIMELINE ========== */
+.schedule-timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.timeline-item {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.timeline-item:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.15);
+    transform: translateY(-2px);
+}
+
+.timeline-period {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 0.75rem 1rem;
+    text-align: center;
+}
+
+.period-number {
+    color: white;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.timeline-content {
+    padding: 1rem;
+}
+
+.timeline-date {
+    color: #667eea;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px dashed #e9ecef;
+}
+
+.timeline-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.timeline-details .detail-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+}
+
+.timeline-details .detail-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.timeline-details .detail-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #212529;
+}
+
+.timeline-details .detail-total {
+    grid-column: span 2;
+    background: linear-gradient(135deg, #667eea10, #764ba210);
+    border: 1px solid #667eea30;
+}
+
+/* ========== SUMMARY BOXES ========== */
+.summary-box {
+    padding: 1.5rem;
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s;
+}
+
+.summary-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+.summary-primary {
+    background: linear-gradient(135deg, #667eea15, #764ba215);
+    border: 2px solid #667eea;
+}
+
+.summary-danger {
+    background: linear-gradient(135deg, #f093fb15, #f5576c15);
+    border: 2px solid #f5576c;
+}
+
+.summary-info {
+    background: linear-gradient(135deg, #4facfe15, #00f2fe15);
+    border: 2px solid #4facfe;
+}
+
+.summary-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.summary-primary .summary-icon {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.summary-danger .summary-icon {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color: white;
+}
+
+.summary-info .summary-icon {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    color: white;
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+/* ========== MODERN TABLE ========== */
+.table-container {
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 1rem;
+}
+
+.modern-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.modern-table thead th {
+    padding: 1.5rem 1.25rem;
+    color: white;
+    font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+}
+
+.modern-table tbody tr {
+    background: white;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.modern-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.modern-table tbody tr:hover {
+    background: linear-gradient(135deg, #f8f9ff 0%, #f5f7ff 100%);
+    transform: scale(1.005);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+}
+
+.modern-table tbody td {
+    padding: 1.5rem 1.25rem;
+    vertical-align: middle;
+}
+
+.modern-table-official thead {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.row-paid {
+    background: linear-gradient(135deg, #f0fff7 0%, #e6ffef 100%) !important;
+    border-left: 4px solid #38ef7d !important;
+}
+
+.row-overdue {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%) !important;
+    border-left: 4px solid #f5576c !important;
+}
+
+/* ========== PERIOD BADGE ========== */
+.period-badge {
+    display: inline-block;
+    padding: 0.6rem 1.25rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 3rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.period-badge.badge-success {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+}
+
+/* ========== AMOUNT TEXT ========== */
+.amount-text {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: 0.3px;
+}
+
+/* ========== STATUS BADGE LARGE ========== */
+.status-badge-lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    border-radius: 3rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.status-paid {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+}
+
+.status-overdue {
+    background: linear-gradient(135deg, #f093fb, #f5576c);
+    color: white;
+}
+
+.status-pending {
+    background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+    color: #2d3436;
+}
+
+/* ========== PAY BUTTON ========== */
+.btn-pay {
+    background: linear-gradient(135deg, #11998e, #38ef7d);
+    color: white;
+    border: none;
+    padding: 0.65rem 1.5rem;
+    border-radius: 3rem;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 15px rgba(17, 153, 142, 0.4);
+    font-size: 0.95rem;
+}
+
+.btn-pay:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(17, 153, 142, 0.5);
+    color: white;
+}
+
+.btn-pay:active {
+    transform: translateY(-1px);
+}
+
+/* ========== SECTION DIVIDER ========== */
+.section-divider {
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #667eea, #764ba2, transparent);
+    margin: 3rem 0;
+    border-radius: 2px;
+}
+
+/* ========== ALERTS ========== */
+.alert {
+    border: none;
+    border-radius: 1rem;
+    border-left: 4px solid;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left-color: #2196f3;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-left-color: #4caf50;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .gradient-header {
+        padding: 1.75rem;
+    }
+    
+    .gradient-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .status-badge {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .stat-card {
+        padding: 1.25rem;
+    }
+    
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .stat-icon i {
+        font-size: 1.5rem;
+    }
+    
+    .stat-value {
+        font-size: 1.35rem;
+    }
+    
+    .modern-table {
+        font-size: 0.875rem;
+    }
+    
+    .modern-table thead th,
+    .modern-table tbody td {
+        padding: 1rem 0.75rem;
+    }
+    
+    .amount-text {
+        font-size: 0.9rem;
+    }
+    
+    .schedule-header {
+        padding: 1.75rem;
+    }
+    
+    .schedule-icon {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .schedule-icon i {
+        font-size: 1.5rem;
+    }
+    
+    .summary-value {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .table-container {
+        margin: 0 -1rem;
+        border-radius: 0;
+    }
+    
+    .modern-table thead th,
+    .modern-table tbody td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .amount-text {
+        font-size: 0.85rem;
+    }
+    
+    .period-badge {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+    }
+    
+    .status-badge-lg {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.875rem;
+    }
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function makePayment(scheduleId) {
-    if (!confirm('Xác nhận thanh toán kỳ hạn này?')) return;
+function makePayment(scheduleId, amount) {
+    const formattedAmount = new Intl.NumberFormat('vi-VN').format(amount);
+    
+    if (!confirm(`Xác nhận thanh toán ${formattedAmount} ₫?`)) return;
+    
+    const btn = event.target.closest('button');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
     
     fetch(`/lending/payment/${scheduleId}/pay/`, {
         method: 'POST',
-        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Thanh toán thành công!');
+            alert('✅ ' + data.message);
             location.reload();
         } else {
-            alert(data.error);
+            alert('❌ Lỗi: ' + data.error);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
         }
+    })
+    .catch(error => {
+        alert('❌ Có lỗi xảy ra: ' + error);
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     });
 }
 </script>

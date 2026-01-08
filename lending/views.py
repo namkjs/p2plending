@@ -9,7 +9,15 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from .models import LoanRequest, LoanContract, RepaymentSchedule, Dispute, LenderProfile
+from .models import (
+    LoanRequest,
+    LoanContract,
+    RepaymentSchedule,
+    PaymentSchedule,
+    PaymentTransaction,
+    Dispute,
+    LenderProfile,
+)
 
 
 # ========== BORROWER VIEWS ==========
@@ -86,7 +94,7 @@ def my_loans(request):
 
 @login_required
 def loan_detail(request, loan_id):
-    """Chi tiết đơn vay"""
+    """Chi tiết đơn vay với lịch trả nợ từ Contract Generator Agent"""
     loan = get_object_or_404(LoanRequest, id=loan_id)
 
     # Check permission
@@ -100,7 +108,42 @@ def loan_detail(request, loan_id):
         return redirect("user:dashboard")
 
     contract = getattr(loan, "loancontract", None)
-    schedules = contract.schedules.all() if contract else []
+
+    # Lấy lịch trả từ PaymentSchedule nếu có contract
+    payment_schedules = []
+    if contract:
+        payment_schedules = PaymentSchedule.objects.filter(contract=contract).order_by(
+            "installment_number"
+        )
+
+    # Nếu chưa có lịch trả, tính toán bằng Contract Generator Agent
+    loan_schedule = None
+    total_amount = 0
+    total_interest = 0
+
+    if not payment_schedules and loan.status == "APPROVED":
+        # Sử dụng Contract Generator Agent để tính lịch
+        from ai_agents.agents.contract_generator_new import calculate_loan_schedule
+
+        try:
+            schedule_result = calculate_loan_schedule.invoke(
+                {
+                    "principal": float(loan.amount),
+                    "interest_rate": loan.interest_rate,
+                    "duration_months": loan.duration_months,
+                    "payment_method": "EQUAL_PRINCIPAL",
+                }
+            )
+
+            import json
+
+            schedule_data = json.loads(schedule_result)
+            if schedule_data.get("success"):
+                loan_schedule = schedule_data["data"]["schedule"]
+                total_amount = schedule_data["data"]["total_amount"]
+                total_interest = schedule_data["data"]["total_interest"]
+        except Exception as e:
+            print(f"Error calculating schedule: {e}")
 
     return render(
         request,
@@ -108,11 +151,90 @@ def loan_detail(request, loan_id):
         {
             "loan": loan,
             "contract": contract,
-            "schedules": schedules,
+            "payment_schedules": payment_schedules,
+            "loan_schedule": loan_schedule,
+            "total_amount": total_amount,
+            "total_interest": total_interest,
             "is_borrower": is_borrower,
             "is_lender": is_lender,
         },
     )
+
+
+@login_required
+@require_http_methods(["POST"])
+def make_payment(request, schedule_id):
+    """Xử lý thanh toán kỳ hạn"""
+    try:
+        schedule = get_object_or_404(PaymentSchedule, id=schedule_id)
+        contract = schedule.contract
+
+        # Kiểm tra quyền
+        if contract.borrower != request.user:
+            return JsonResponse(
+                {"success": False, "error": "Bạn không có quyền thanh toán!"}
+            )
+
+        # Kiểm tra đã thanh toán chưa
+        if schedule.status == "PAID":
+            return JsonResponse(
+                {"success": False, "error": "Kỳ hạn này đã được thanh toán!"}
+            )
+
+        # Kiểm tra số dư
+        borrower_profile = request.user.profile
+        total_payment = schedule.total_amount + schedule.late_fee
+
+        if borrower_profile.balance < total_payment:
+            return JsonResponse({"success": False, "error": "Số dư không đủ!"})
+
+        # Thực hiện thanh toán
+        from datetime import datetime, date
+        from decimal import Decimal
+
+        borrower_profile.balance -= total_payment
+        borrower_profile.save()
+
+        lender_profile = contract.lender.profile
+        lender_profile.balance += total_payment
+        lender_profile.save()
+
+        # Cập nhật schedule
+        schedule.paid_amount = total_payment
+        schedule.paid_date = date.today()
+        schedule.status = "PAID"
+        schedule.save()
+
+        # Tạo transaction
+        PaymentTransaction.objects.create(
+            contract=contract,
+            payment_schedule=schedule,
+            payer=request.user,
+            recipient=contract.lender,
+            amount=schedule.total_amount,
+            late_fee=schedule.late_fee,
+            transaction_type="INSTALLMENT",
+            status="COMPLETED",
+        )
+
+        # Kiểm tra xem đã trả hết chưa
+        remaining = PaymentSchedule.objects.filter(
+            contract=contract, status="PENDING"
+        ).count()
+        if remaining == 0:
+            contract.status = "COMPLETED"
+            contract.save()
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": f"Thanh toán thành công {total_payment:,.0f} VNĐ",
+                "new_balance": float(borrower_profile.balance),
+            }
+        )
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})
 
 
 # ========== LENDER VIEWS ==========
