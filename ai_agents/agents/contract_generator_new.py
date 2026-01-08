@@ -561,7 +561,7 @@ Hãy tạo hợp đồng chính xác và đầy đủ thông tin."""
         try:
             # 1. Validate parties
             validation = validate_contract_parties.invoke(
-                loan_request.borrower.id, lender.id
+                {"borrower_id": loan_request.borrower.id, "lender_id": lender.id}
             )
             validation_data = json.loads(validation)
 
@@ -574,23 +574,27 @@ Hãy tạo hợp đồng chính xác và đầy đủ thông tin."""
 
             # 2. Calculate schedule
             schedule_result = calculate_loan_schedule.invoke(
-                float(loan_request.amount),
-                float(loan_request.interest_rate),
-                loan_request.duration_months,
-                payment_method,
+                {
+                    "principal": float(loan_request.amount),
+                    "interest_rate": float(loan_request.interest_rate),
+                    "duration_months": loan_request.duration_months,
+                    "payment_method": payment_method,
+                }
             )
             schedule_data = json.loads(schedule_result)
 
             # 3. Generate contract content
             contract_result = generate_contract_content.invoke(
-                borrower_info.get("name", "N/A"),
-                borrower_info.get("id_card", "N/A"),
-                lender_info.get("name", "N/A"),
-                lender_info.get("id_card", "N/A"),
-                float(loan_request.amount),
-                float(loan_request.interest_rate),
-                loan_request.duration_months,
-                loan_request.purpose,
+                {
+                    "borrower_name": borrower_info.get("name", "N/A"),
+                    "borrower_id": borrower_info.get("id_card", "N/A"),
+                    "lender_name": lender_info.get("name", "N/A"),
+                    "lender_id": lender_info.get("id_card", "N/A"),
+                    "principal": float(loan_request.amount),
+                    "interest_rate": float(loan_request.interest_rate),
+                    "duration_months": loan_request.duration_months,
+                    "purpose": loan_request.purpose,
+                }
             )
             contract_data = json.loads(contract_result)
 
@@ -601,7 +605,11 @@ Hãy tạo hợp đồng chính xác và đầy đủ thông tin."""
 
             # 4. Create contract record
             create_result = create_contract_record.invoke(
-                loan_request.id, lender.id, contract_content
+                {
+                    "loan_request_id": loan_request.id,
+                    "lender_id": lender.id,
+                    "contract_content": contract_content,
+                }
             )
             create_data = json.loads(create_result)
 
@@ -609,6 +617,7 @@ Hãy tạo hợp đồng chính xác và đầy đủ thông tin."""
                 raise ValueError(create_data.get("error", "Failed to create contract"))
 
             result = {
+                "contract_id": create_data["data"]["contract_id"],
                 "contract": create_data["data"],
                 "schedule": schedule_data.get("data", {}),
                 "parties": {
@@ -722,10 +731,12 @@ Vui lòng xem và ký hợp đồng.""",
 
         # Calculate schedule
         schedule_result = calculate_loan_schedule.invoke(
-            float(contract.principal_amount),
-            float(contract.interest_rate),
-            (contract.end_date - contract.start_date).days // 30,
-            "EQUAL_PRINCIPAL",
+            {
+                "principal": float(contract.principal_amount),
+                "interest_rate": float(contract.interest_rate),
+                "duration_months": (contract.end_date - contract.start_date).days // 30,
+                "payment_method": "EQUAL_PRINCIPAL",
+            }
         )
         schedule_data = json.loads(schedule_result)
 
