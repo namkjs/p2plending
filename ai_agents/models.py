@@ -11,6 +11,7 @@ class AgentLog(models.Model):
         ("CONTRACT_GENERATOR", "Agent Contract Generator"),
         ("PAYMENT_MONITOR", "Agent Payment Monitor"),
         ("DISPUTE_RESOLVER", "Agent Dispute Resolver"),
+        ("CHATBOT", "Agent Chatbot"),
     ]
     agent_type = models.CharField(max_length=30, choices=AGENT_CHOICES)
 
@@ -83,3 +84,39 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.notification_type} - {self.user.username}"
+
+
+class ChatSession(models.Model):
+    """Phiên chat của user với Chatbot"""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chat_sessions")
+    title = models.CharField(max_length=200, default="New Chat")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return f"Chat {self.id} - {self.user.username}"
+
+
+class ChatMessage(models.Model):
+    """Tin nhắn trong phiên chat"""
+    
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="messages")
+    ROLE_CHOICES = [
+        ("user", "User"),
+        ("assistant", "Assistant"),
+        ("system", "System"),
+    ]
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ["created_at"]
+        
+    def __str__(self):
+        return f"{self.role}: {self.content[:50]}..."

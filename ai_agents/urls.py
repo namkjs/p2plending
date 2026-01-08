@@ -10,4 +10,7 @@ urlpatterns = [
     path("matcher/<int:loan_id>/matches/", views.get_matches, name="get_matches"),
     path("loan/<int:loan_id>/approve/", views.approve_loan, name="approve_loan"),
     path("payment/check/", views.run_payment_check, name="run_payment_check"),
+    path("chat/send/", views.chat_send, name="chat_send"),
+    path("chat/history/", views.chat_history, name="chat_history"),
+
 ]

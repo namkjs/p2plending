@@ -17,7 +17,8 @@ from langchain_core.messages import HumanMessage, AIMessage
 def get_llm():
     """Get LLM instance - using Groq"""
     return ChatGroq(
-        model="meta-llama/llama-4-scout-17b-16e-instruct",
+        # model="meta-llama/llama-4-scout-17b-16e-instruct",
+        model="openai/gpt-oss-120b",
         temperature=0.3,
         api_key=os.getenv("GROQ_API_KEY", ""),
     )

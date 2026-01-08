@@ -98,3 +98,38 @@ def run_payment_check(request):
     agent = PaymentMonitorAgent()
     result = agent.process()
     return JsonResponse(result)
+
+
+@login_required
+@require_http_methods(["POST"])
+def chat_send(request):
+    """API Chat với Bot"""
+    import json
+    from .agents.chatbot_agent import ChatbotAgent
+
+    try:
+        data = json.loads(request.body)
+        message = data.get("message")
+        session_id = data.get("session_id")
+
+        if not message:
+            return JsonResponse({"success": False, "error": "Message required"})
+
+        agent = ChatbotAgent()
+        result = agent.process(message, request.user, session_id)
+        
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def chat_history(request):
+    """Lấy lịch sử chat"""
+    from .agents.chatbot_agent import ChatbotAgent
+    
+    agent = ChatbotAgent()
+    history = agent.get_history(request.user)
+    
+    return JsonResponse({"success": True, "data": history})
+

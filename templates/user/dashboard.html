@@ -14,7 +14,7 @@
         </div>
         <a href="{% url 'user:wallet' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Quản lý ví →</a>
     </div>
-    
+
     <!-- KYC Status -->
     <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex items-center justify-between">
@@ -33,22 +33,24 @@
         </div>
         <a href="{% url 'user:kyc' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xác thực KYC →</a>
     </div>
-    
+
     <!-- Quick Actions -->
     <div class="bg-white rounded-lg shadow-md p-6">
         <p class="text-gray-500 mb-4">Thao tác nhanh</p>
         <div class="space-y-2">
-            <a href="{% url 'lending:create_loan' %}" class="block w-full bg-green-500 text-white text-center py-2 rounded hover:bg-green-600">
+            <a href="{% url 'lending:create_loan' %}"
+                class="block w-full bg-green-500 text-white text-center py-2 rounded hover:bg-green-600">
                 <i class="fas fa-plus mr-2"></i>Tạo đơn vay
             </a>
-            <a href="{% url 'lending:browse_loans' %}" class="block w-full bg-blue-500 text-white text-center py-2 rounded hover:bg-blue-600">
+            <a href="{% url 'lending:browse_loans' %}"
+                class="block w-full bg-blue-500 text-white text-center py-2 rounded hover:bg-blue-600">
                 <i class="fas fa-search mr-2"></i>Tìm khoản đầu tư
             </a>
         </div>
     </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     <!-- Recent Loans -->
     <div class="bg-white rounded-lg shadow-md p-6">
         <h3 class="text-lg font-semibold mb-4"><i class="fas fa-file-invoice-dollar mr-2"></i>Đơn vay gần đây</h3>
@@ -73,9 +75,38 @@
         {% else %}
         <p class="text-gray-500">Chưa có đơn vay nào</p>
         {% endif %}
-        <a href="{% url 'lending:my_loans' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xem tất cả →</a>
+        <a href="{% url 'lending:my_loans' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xem tất cả
+            →</a>
     </div>
-    
+
+    <!-- Recent Investments -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-semibold mb-4"><i class="fas fa-hand-holding-usd mr-2"></i>Khoản đầu tư gần đây</h3>
+        {% if investments %}
+        <div class="space-y-3">
+            {% for contract in investments %}
+            <a href="{% url 'lending:my_investments' %}" class="block p-3 border rounded hover:bg-gray-50">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-bold text-gray-900">{{ contract.loan_request.amount|floatformat:0 }} VNĐ</p>
+                        <p class="text-sm text-gray-600">Hợp đồng: #{{ contract.contract_number|default:contract.id }}
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold text-green-600">{{ contract.interest_rate }}%</p>
+                        <p class="text-xs text-gray-500">{{ contract.loan_request.duration_months }} tháng</p>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500">Chưa có khoản đầu tư nào</p>
+        {% endif %}
+        <a href="{% url 'lending:my_investments' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xem tất
+            cả →</a>
+    </div>
+
     <!-- Notifications -->
     <div class="bg-white rounded-lg shadow-md p-6">
         <h3 class="text-lg font-semibold mb-4"><i class="fas fa-bell mr-2"></i>Thông báo mới</h3>
@@ -92,7 +123,8 @@
         {% else %}
         <p class="text-gray-500">Không có thông báo mới</p>
         {% endif %}
-        <a href="{% url 'user:notifications' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xem tất cả →</a>
+        <a href="{% url 'user:notifications' %}" class="mt-4 inline-block text-indigo-600 hover:underline">Xem tất cả
+            →</a>
     </div>
 </div>
 {% endblock %}
